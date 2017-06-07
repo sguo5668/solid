@@ -1,0 +1,391 @@
+AutoMapper
+Filters
+ViewComponents
+Validation
+Custom Action results? maybe
+
+What is a fat controller?
+Too much code
+Too many responsibilities
+Hits too many layers
+ - Ex: AccountController
+ - Using statements
+ - Register action
+  - Membership
+  - Forms service
+  - Modelstate
+Add:
+1. Dependency Inversion
+- Add controller builder
+- Add new ctor
+2. AutoMapper
+- Add ViewModelProfile
+- Add EditModelProfile
+- Add Initialize in Boot strapper
+- Add initialize call to global.asax
+- Fix Index
+- Fix Show
+- Fix Edit
+3. Model Binding
+- Create ConferenceModelBinder
+- Register custom model binder
+4. Action Results
+- Create AutoMapViewResult
+- Create AutoMapView() method
+- Fix Index
+- Fix Show
+- Fix Edit
+- Create IFormHandler<T>
+- Create ConferenceEditModelFormHandler
+- Fill in FormActionResult<T>
+- Add code to UiRegistry
+- Create Form() method on DefaultController
+- Fix Edit post action
+Conclusion
+- Identify concepts
+-- Executing queries
+-- Mapping models
+-- Retrieving entities
+-- Processing a command
+- Make concepts explicit
+-- Controller is the traffic cop
+-- Decides "what", not "how"
+-- Each concept is a specific prototype
+
+NEW MODE
+
+StudentController
+
+- Transaction filter
+
+    public class MvcTransactionFilter : IAsyncActionFilter
+    {
+        private readonly SchoolContext _dbContext;
+
+        public MvcTransactionFilter(SchoolContext dbContext)
+        {
+            _dbContext = dbContext;
+
+
+        }
+
+        public async Task OnActionExecutionAsync(
+            ActionExecutingContext context,
+            ActionExecutionDelegate next)
+        {
+            try
+            {
+                await _dbContext.BeginTransaction();
+
+                await next();
+
+                await _dbContext.CloseTransaction();
+            }
+            catch (Exception e)
+            {
+                await _dbContext.CloseTransaction(e);
+
+                throw;
+            }
+        }
+    }
+
+	
+SchoolContext.cs
+
+        private IDbContextTransaction _currentTransaction;
+
+        public async Task BeginTransaction()
+        {
+            try
+            {
+                if (_currentTransaction != null)
+                {
+                    return;
+                }
+
+                _currentTransaction = await Database.BeginTransactionAsync(IsolationLevel.ReadCommitted);
+            }
+            catch (Exception)
+            {
+                // todo: log transaction exception
+                throw;
+            }
+        }
+
+        public Task CloseTransaction()
+        {
+            return CloseTransaction(exception: null);
+        }
+
+        public async Task CloseTransaction(Exception exception)
+        {
+            try
+            {
+                if (_currentTransaction != null && exception != null)
+                {
+                    _currentTransaction.Rollback();
+                    return;
+                }
+
+                await SaveChangesAsync();
+
+                _currentTransaction?.Commit();
+            }
+            catch (Exception)
+            {
+                // todo: log exception
+                if (_currentTransaction?.GetDbTransaction().Connection != null)
+                {
+                    _currentTransaction.Rollback();
+                }
+
+                throw;
+            }
+            finally
+            {
+                if (_currentTransaction != null)
+                {
+                    _currentTransaction.Dispose();
+                    _currentTransaction = null;
+                }
+            }
+        }
+
+
+Program.cs
+
+            services.AddMvc(opt =>
+            {
+                opt.Filters.Add(typeof(MvcTransactionFilter));
+            });
+
+1a Validations
+
+_Layout.cshtml
+
+        <script src="~/lib/lodash/dist/lodash.js"></script>
+
+
+    <script type="text/javascript">
+    var highlightFields = function (response) {
+
+        $('.form-group').removeClass('has-error');
+
+        $.each(response, function (propName, val) {
+            var nameSelector = '[name = "' + propName.replace(/(:|\.|\[|\])/g, "\\$1") + '"]',
+                idSelector = '#' + propName.replace(/(:|\.|\[|\])/g, "\\$1");
+            var $el = $(nameSelector) || $(idSelector);
+
+            if (val.Errors.length > 0) {
+                $el.closest('.form-group').addClass('has-error');
+            }
+        });
+    };
+    var highlightErrors = function (xhr) {
+        try {
+            var data = JSON.parse(xhr.responseText);
+            highlightFields(data);
+            showSummary(data);
+            window.scrollTo(0, 0);
+        } catch (e) {
+            // (Hopefully) caught by the generic error handler in `config.js`.
+        }
+    };
+    var showSummary = function (response) {
+        $('#validationSummary').empty().removeClass('hidden');
+
+        var verboseErrors = _.flatten(_.map(response, 'Errors')),
+            errors = [];
+
+        var nonNullErrors = _.reject(verboseErrors, function (error) {
+            return error.ErrorMessage.indexOf('must not be empty') > -1;
+        });
+
+        _.each(nonNullErrors, function (error) {
+            errors.push(error.ErrorMessage);
+        });
+
+        if (nonNullErrors.length !== verboseErrors.length) {
+            errors.push('The highlighted fields are required to submit this form.');
+        }
+
+        var $ul = $('#validationSummary').append('<ul></ul>');
+
+        _.each(errors, function (error) {
+            var $li = $('<li></li>').text(error);
+            $li.appendTo($ul);
+        });
+    };
+    var redirect = function (data) {
+        if (data.redirect) {
+            window.location = data.redirect;
+        } else {
+            window.scrollTo(0, 0);
+            window.location.reload();
+        }
+    };
+
+    $('form[method=post]').not('.no-ajax').on('submit', function () {
+        var submitBtn = $(this).find('[type="submit"]');
+
+        submitBtn.prop('disabled', true);
+        $(window).unbind();
+
+        var $this = $(this),
+            formData = $this.serialize();
+
+        $this.find('div').removeClass('has-error');
+
+        $.ajax({
+            url: $this.attr('action'),
+            type: 'post',
+            data: formData,
+            contentType: 'application/x-www-form-urlencoded; charset=UTF-8',
+            dataType: 'json',
+            statusCode: {
+                200: redirect
+            },
+            complete: function () {
+                submitBtn.prop('disabled', false);
+            }
+        }).error(highlightErrors);
+
+        return false;
+    });
+
+    </script>
+
+Edit.cshtml
+	<div id="validationSummary" class="alert alert-danger hidden" />
+	
+ValidatorActionFilter.cs
+
+
+Startup.cs
+
+                opt.Filters.Add(typeof(ValidatorActionFilter));
+
+ControllerExtensions.cs
+
+    public static class ControllerExtensions
+    {
+        public static IActionResult RedirectToActionJson<TController>(this TController controller, string action)
+            where TController : Controller
+        {
+            return controller.JsonNet(new
+            {
+                redirect = controller.Url.Action(action)
+            }
+                );
+        }
+
+        public static ContentResult JsonNet(this Controller controller, object model)
+        {
+            var serialized = JsonConvert.SerializeObject(model, new JsonSerializerSettings
+            {
+                ReferenceLoopHandling = ReferenceLoopHandling.Ignore
+            });
+
+            return new ContentResult
+            {
+                Content = serialized,
+                ContentType = "application/json"
+            };
+        }
+    }
+
+		
+2. Add AutoMapper
+
+services.AddAutoMapper(typeof(Startup));
+
+4. HtmlTags
+
+services.AddHtmlTags(new DefaultHtmlConventions());
+
+
+    public class MvcCoreHtmlConventions : HtmlConventionRegistry
+    {
+        public MvcCoreHtmlConventions()
+        {
+        }
+    }
+
+            Editors.Always.AddClass("form-control");
+
+            Editors.IfPropertyIs<DateTime?>().ModifyWith(m => m.CurrentTag
+                .AddPattern("9{1,2}/9{1,2}/9999")
+                .AddPlaceholder("MM/DD/YYYY")
+                .AddClass("datepicker")
+                .Value(m.Value<DateTime?>() != null ? m.Value<DateTime>().ToShortDateString() : string.Empty));
+            Editors.If(er => er.Accessor.Name.EndsWith("id", StringComparison.OrdinalIgnoreCase)).BuildBy(a => new HiddenTag().Value(a.StringValue()));
+
+
+            Labels.Always.AddClass("control-label");
+            Labels.Always.AddClass("col-md-2");
+            Labels.ModifyForAttribute<DisplayAttribute>((t, a) => t.Text(a.Name));
+
+        public ElementCategoryExpression DisplayLabels
+        {
+            get { return new ElementCategoryExpression(Library.TagLibrary.Category("DisplayLabels").Profile(TagConstants.Default)); }
+        }
+
+            DisplayLabels.Always.BuildBy<DefaultDisplayLabelBuilder>();
+            DisplayLabels.ModifyForAttribute<DisplayAttribute>((t, a) => t.Text(a.Name));
+
+            Displays.IfPropertyIs<DateTime>().ModifyWith(m => m.CurrentTag.Text(m.Value<DateTime>().ToShortDateString()));
+            Displays.IfPropertyIs<DateTime?>().ModifyWith(m => m.CurrentTag.Text(m.Value<DateTime?>() == null ? null : m.Value<DateTime?>().Value.ToShortDateString()));
+
+
+        public static HtmlTag DisplayLabel<T>(this IHtmlHelper<T> helper, Expression<Func<T, object>> expression)
+            where T : class
+        {
+			return helper.Tag(expression, "DisplayLabels");
+        }
+
+		
+		
+        public static HtmlTag InputBlock<T>(this HtmlHelper<T> helper,
+            Expression<Func<T, object>> expression,
+            Action<HtmlTag> inputModifier = null) where T : class
+        {
+            inputModifier = inputModifier ?? (_ => { });
+
+            var divTag = new HtmlTag("div");
+            divTag.AddClass("col-md-10");
+
+            var inputTag = helper.Input(expression);
+            inputModifier(inputTag);
+
+            divTag.Append(inputTag);
+
+            return divTag;
+        }
+
+        public static HtmlTag FormBlock<T>(this HtmlHelper<T> helper,
+            Expression<Func<T, object>> expression,
+            Action<HtmlTag> labelModifier = null,
+            Action<HtmlTag> inputBlockModifier = null,
+            Action<HtmlTag> inputModifier = null
+            ) where T : class
+        {
+            labelModifier = labelModifier ?? (_ => { });
+            inputBlockModifier = inputBlockModifier ?? (_ => { });
+
+            var divTag = new HtmlTag("div");
+            divTag.AddClass("form-group");
+
+            var labelTag = helper.Label(expression);
+            labelModifier(labelTag);
+
+            var inputBlockTag = helper.InputBlock(
+                expression,
+                inputModifier);
+            inputBlockModifier(inputBlockTag);
+
+            divTag.Append(labelTag);
+            divTag.Append(inputBlockTag);
+
+            return divTag;
+        }

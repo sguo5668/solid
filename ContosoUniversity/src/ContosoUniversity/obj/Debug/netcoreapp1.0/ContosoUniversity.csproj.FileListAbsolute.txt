@@ -1,0 +1,11 @@
+C:\Users\jimmy\Desktop\SolidASPNETCore\ContosoUniversity\src\ContosoUniversity\bin\Debug\netcoreapp1.0\ContosoUniversity.dll.config
+C:\Users\jimmy\Desktop\SolidASPNETCore\ContosoUniversity\src\ContosoUniversity\bin\Debug\netcoreapp1.0\ContosoUniversity.deps.json
+C:\Users\jimmy\Desktop\SolidASPNETCore\ContosoUniversity\src\ContosoUniversity\bin\Debug\netcoreapp1.0\ContosoUniversity.runtimeconfig.json
+C:\Users\jimmy\Desktop\SolidASPNETCore\ContosoUniversity\src\ContosoUniversity\bin\Debug\netcoreapp1.0\ContosoUniversity.runtimeconfig.dev.json
+C:\Users\jimmy\Desktop\SolidASPNETCore\ContosoUniversity\src\ContosoUniversity\bin\Debug\netcoreapp1.0\ContosoUniversity.dll
+C:\Users\jimmy\Desktop\SolidASPNETCore\ContosoUniversity\src\ContosoUniversity\bin\Debug\netcoreapp1.0\ContosoUniversity.pdb
+C:\Users\jimmy\Desktop\SolidASPNETCore\ContosoUniversity\src\ContosoUniversity\obj\Debug\netcoreapp1.0\ContosoUniversity.csprojResolveAssemblyReference.cache
+C:\Users\jimmy\Desktop\SolidASPNETCore\ContosoUniversity\src\ContosoUniversity\obj\Debug\netcoreapp1.0\UserSecretsAssemblyInfo.cs
+C:\Users\jimmy\Desktop\SolidASPNETCore\ContosoUniversity\src\ContosoUniversity\obj\Debug\netcoreapp1.0\ContosoUniversity.AssemblyInfo.cs
+C:\Users\jimmy\Desktop\SolidASPNETCore\ContosoUniversity\src\ContosoUniversity\obj\Debug\netcoreapp1.0\ContosoUniversity.dll
+C:\Users\jimmy\Desktop\SolidASPNETCore\ContosoUniversity\src\ContosoUniversity\obj\Debug\netcoreapp1.0\ContosoUniversity.pdb
